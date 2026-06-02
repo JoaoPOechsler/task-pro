@@ -2,7 +2,7 @@ export interface UserProfile {
   uid: string;
   name: string;
   email: string;
-  photoURL?: string;
+  photoURL?: string | null;
   createdAt: Date;
   emailVerified: boolean;
 }

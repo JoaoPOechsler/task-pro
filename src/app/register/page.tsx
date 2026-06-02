@@ -6,7 +6,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
-import { CheckSquare, User, Mail, Lock, Loader2, Eye, EyeOff, CheckCircle2 } from "lucide-react";
+import { CheckSquare, User, Mail, Lock, Loader2, Eye, EyeOff, CheckCircle2, RefreshCw } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { RegisterFormData } from "@/types/user";
 
@@ -28,10 +28,13 @@ const registerSchema = z
   });
 
 export default function RegisterPage() {
-  const { registerWithEmail } = useAuth();
+  const { registerWithEmail, resendVerificationEmail } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [registered, setRegistered] = useState(false);
+  const [credentials, setCredentials] = useState<{ email: string; password: string } | null>(null);
+  const [resending, setResending] = useState(false);
+  const [resent, setResent] = useState(false);
 
   const {
     register,
@@ -52,10 +55,26 @@ export default function RegisterPage() {
   async function onSubmit(data: RegisterFormData) {
     try {
       await registerWithEmail(data.name, data.email, data.password);
+      setCredentials({ email: data.email, password: data.password });
       setRegistered(true);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Erro ao criar conta.";
       toast.error(msg.includes("email-already-in-use") ? "Este e-mail já está cadastrado." : msg);
+    }
+  }
+
+  async function handleResend() {
+    if (!credentials) return;
+    setResending(true);
+    try {
+      await resendVerificationEmail(credentials.email, credentials.password);
+      setResent(true);
+      toast.success("E-mail reenviado! Verifique sua caixa de entrada e o spam.");
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Erro ao reenviar.";
+      toast.error(msg);
+    } finally {
+      setResending(false);
     }
   }
 
@@ -67,12 +86,36 @@ export default function RegisterPage() {
             <CheckCircle2 className="w-6 h-6 text-green-600" />
           </div>
           <h2 className="text-lg font-bold text-gray-900 mb-2">Conta criada!</h2>
-          <p className="text-gray-400 text-sm mb-6">
-            Enviamos um e-mail de verificação. Confirme para ativar sua conta.
+          <p className="text-gray-400 text-sm mb-1">
+            Enviamos um e-mail de verificação para:
           </p>
-          <Link href="/login" className="inline-block bg-blue-600 hover:bg-blue-700 text-white font-medium px-5 py-2 rounded-lg transition-colors text-sm">
-            Ir para o Login
-          </Link>
+          <p className="text-blue-600 text-sm font-medium mb-6">
+            {credentials?.email}
+          </p>
+          <p className="text-gray-400 text-xs mb-6">
+            Confirme o link no e-mail para ativar sua conta. Verifique também a caixa de spam.
+          </p>
+
+          <div className="flex flex-col gap-2">
+            <Link
+              href="/login"
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 rounded-lg transition-colors text-sm"
+            >
+              Ir para o Login
+            </Link>
+            <button
+              onClick={handleResend}
+              disabled={resending || resent}
+              className="w-full flex items-center justify-center gap-2 border border-gray-200 text-gray-600 hover:bg-gray-50 font-medium py-2 rounded-lg transition-colors text-sm disabled:opacity-50"
+            >
+              {resending ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <RefreshCw className="w-4 h-4" />
+              )}
+              {resent ? "E-mail reenviado" : "Reenviar e-mail"}
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -92,7 +135,6 @@ export default function RegisterPage() {
 
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-            {/* Name */}
             <div>
               <label className="block text-xs font-medium text-gray-700 mb-1.5">Nome</label>
               <div className="relative">
@@ -107,7 +149,6 @@ export default function RegisterPage() {
               {errors.name && <p className="text-xs text-red-500 mt-1">{errors.name.message}</p>}
             </div>
 
-            {/* Email */}
             <div>
               <label className="block text-xs font-medium text-gray-700 mb-1.5">E-mail</label>
               <div className="relative">
@@ -122,7 +163,6 @@ export default function RegisterPage() {
               {errors.email && <p className="text-xs text-red-500 mt-1">{errors.email.message}</p>}
             </div>
 
-            {/* Password */}
             <div>
               <label className="block text-xs font-medium text-gray-700 mb-1.5">Senha</label>
               <div className="relative">
@@ -138,7 +178,6 @@ export default function RegisterPage() {
                 </button>
               </div>
               {errors.password && <p className="text-xs text-red-500 mt-1">{errors.password.message}</p>}
-
               {passwordValue && (
                 <div className="mt-2 flex gap-3 flex-wrap">
                   {passwordChecks.map((c) => (
@@ -151,7 +190,6 @@ export default function RegisterPage() {
               )}
             </div>
 
-            {/* Confirm Password */}
             <div>
               <label className="block text-xs font-medium text-gray-700 mb-1.5">Confirmar senha</label>
               <div className="relative">

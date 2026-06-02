@@ -34,7 +34,12 @@ export default function LoginPage() {
       toast.success("Login realizado com sucesso!");
       router.push("/dashboard");
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : "Erro ao fazer login.");
+      const msg = err instanceof Error ? err.message : "";
+      if (msg.includes("invalid-credential") || msg.includes("wrong-password") || msg.includes("user-not-found")) {
+        toast.error("E-mail ou senha incorretos.");
+      } else {
+        toast.error(msg || "Erro ao fazer login.");
+      }
     }
   }
 

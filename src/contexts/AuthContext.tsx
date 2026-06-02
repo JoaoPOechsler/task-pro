@@ -29,6 +29,7 @@ interface AuthContextType {
   signInWithGoogle: () => Promise<void>;
   signInWithGithub: () => Promise<void>;
   registerWithEmail: (name: string, email: string, password: string) => Promise<void>;
+  resendVerificationEmail: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
 }
 
@@ -65,12 +66,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       uid: firebaseUser.uid,
       name,
       email: firebaseUser.email ?? "",
-      photoURL: firebaseUser.photoURL ?? undefined,
+      photoURL: firebaseUser.photoURL ?? null,
       createdAt: new Date(),
       emailVerified: firebaseUser.emailVerified,
     };
     await setDoc(doc(db, "users", firebaseUser.uid), profile, { merge: true });
     setUserProfile(profile);
+  }
+
+  function setSessionCookie() {
+    document.cookie = "session=1; path=/; SameSite=Strict";
+  }
+
+  function clearSessionCookie() {
+    document.cookie = "session=; path=/; max-age=0; SameSite=Strict";
   }
 
   async function signInWithEmail(email: string, password: string) {
@@ -79,16 +88,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await signOut(auth);
       throw new Error("Por favor, verifique seu e-mail antes de fazer login. Cheque sua caixa de entrada.");
     }
+    setSessionCookie();
   }
 
   async function signInWithGoogle() {
     const result = await signInWithPopup(auth, googleProvider);
     await saveUserProfile(result.user, result.user.displayName ?? "Usuário");
+    setSessionCookie();
   }
 
   async function signInWithGithub() {
     const result = await signInWithPopup(auth, githubProvider);
     await saveUserProfile(result.user, result.user.displayName ?? "Usuário");
+    setSessionCookie();
   }
 
   async function registerWithEmail(name: string, email: string, password: string) {
@@ -99,8 +111,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await signOut(auth);
   }
 
+  async function resendVerificationEmail(email: string, password: string) {
+    const result = await signInWithEmailAndPassword(auth, email, password);
+    if (result.user.emailVerified) {
+      await signOut(auth);
+      throw new Error("Este e-mail já foi verificado. Faça login normalmente.");
+    }
+    await sendEmailVerification(result.user);
+    await signOut(auth);
+  }
+
   async function logout() {
     await signOut(auth);
+    clearSessionCookie();
   }
 
   return (
@@ -113,6 +136,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         signInWithGoogle,
         signInWithGithub,
         registerWithEmail,
+        resendVerificationEmail,
         logout,
       }}
     >
