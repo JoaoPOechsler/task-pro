@@ -12,7 +12,7 @@ export interface Task {
   userId: string;
   title: string;
   description: string;
-  dueDate: Date;
+  dueDate: Date | null;
   priority: Priority;
   status: TaskStatus;
   subtasks: Subtask[];
