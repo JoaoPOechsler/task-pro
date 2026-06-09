@@ -50,8 +50,16 @@ export default function LoginPage() {
       else await signInWithGithub();
       toast.success("Login realizado com sucesso!");
       router.push("/dashboard");
-    } catch {
-      toast.error("Erro ao fazer login. Verifique as configurações do Firebase.");
+    } catch (err: unknown) {
+      const code = (err as { code?: string }).code ?? "";
+      if (code === "auth/account-exists-with-different-credential") {
+        toast.error("Este e-mail já está associado a outro método de login. Tente entrar com Google.");
+      } else if (code === "auth/popup-closed-by-user" || code === "auth/cancelled-popup-request") {
+        // usuário fechou o popup, não precisa mostrar erro
+      } else {
+        const msg = err instanceof Error ? err.message : String(err);
+        toast.error(msg || "Erro ao fazer login.");
+      }
     } finally {
       setLoadingProvider(null);
     }
