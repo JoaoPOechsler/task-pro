@@ -7,6 +7,19 @@ import { useTasks } from "@/hooks/useTasks";
 import { CheckSquare, Clock, AlertTriangle, Loader2, ListTodo } from "lucide-react";
 import Link from "next/link";
 import Sidebar from "@/components/Sidebar";
+import {
+  PieChart,
+  Pie,
+  Cell,
+  Tooltip,
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Legend,
+} from "recharts";
 
 export default function DashboardPage() {
   const { user, userProfile, loading: authLoading } = useAuth();
@@ -38,11 +51,25 @@ export default function DashboardPage() {
 
   const displayName = userProfile?.name ?? user.displayName ?? user.email ?? "Usuário";
 
+  const statusData = [
+    { name: "A Fazer", value: tasks.filter((t) => t.status === "todo").length, color: "#3b82f6" },
+    { name: "Fazendo", value: tasks.filter((t) => t.status === "doing").length, color: "#f59e0b" },
+    { name: "Concluído", value: tasks.filter((t) => t.status === "done").length, color: "#22c55e" },
+  ];
+
+  const priorityData = [
+    { name: "Baixa", Tarefas: tasks.filter((t) => t.priority === "baixa").length },
+    { name: "Média", Tarefas: tasks.filter((t) => t.priority === "media").length },
+    { name: "Alta", Tarefas: tasks.filter((t) => t.priority === "alta").length },
+  ];
+
+  const hasData = tasks.length > 0;
+
   return (
     <div className="min-h-screen bg-gray-50 flex">
       <Sidebar />
 
-      <main className="flex-1 p-6">
+      <main className="flex-1 p-6 overflow-auto">
         <div className="mb-6">
           <h1 className="text-xl font-bold text-gray-900">
             Olá, {displayName.split(" ")[0]}!
@@ -93,7 +120,68 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Tarefas recentes ou empty state */}
+        {/* Gráficos */}
+        {!tasksLoading && (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
+            {/* Gráfico de pizza — Status */}
+            <div className="bg-white rounded-xl border border-gray-200 p-4">
+              <h2 className="text-sm font-semibold text-gray-700 mb-4">Tarefas por Status</h2>
+              {hasData ? (
+                <ResponsiveContainer width="100%" height={200}>
+                  <PieChart>
+                    <Pie
+                      data={statusData}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={55}
+                      outerRadius={80}
+                      paddingAngle={3}
+                      dataKey="value"
+                      label={({ name, value }) => value > 0 ? `${name}: ${value}` : ""}
+                      labelLine={false}
+                    >
+                      {statusData.map((entry) => (
+                        <Cell key={entry.name} fill={entry.color} />
+                      ))}
+                    </Pie>
+                    <Tooltip formatter={(v) => [`${v} tarefas`]} />
+                    <Legend />
+                  </PieChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="h-[200px] flex items-center justify-center text-sm text-gray-400">
+                  Nenhuma tarefa para exibir
+                </div>
+              )}
+            </div>
+
+            {/* Gráfico de barras — Prioridade */}
+            <div className="bg-white rounded-xl border border-gray-200 p-4">
+              <h2 className="text-sm font-semibold text-gray-700 mb-4">Tarefas por Prioridade</h2>
+              {hasData ? (
+                <ResponsiveContainer width="100%" height={200}>
+                  <BarChart data={priorityData} margin={{ top: 5, right: 10, left: -20, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                    <XAxis dataKey="name" tick={{ fontSize: 12 }} />
+                    <YAxis tick={{ fontSize: 12 }} allowDecimals={false} />
+                    <Tooltip formatter={(v) => [`${v} tarefas`]} />
+                    <Bar dataKey="Tarefas" radius={[4, 4, 0, 0]}>
+                      <Cell fill="#22c55e" />
+                      <Cell fill="#f59e0b" />
+                      <Cell fill="#ef4444" />
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="h-[200px] flex items-center justify-center text-sm text-gray-400">
+                  Nenhuma tarefa para exibir
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Tarefas recentes */}
         {!tasksLoading && tasks.length === 0 ? (
           <div className="bg-white rounded-xl border border-gray-200 p-10 text-center">
             <ListTodo className="w-8 h-8 text-gray-300 mx-auto mb-3" />
@@ -116,7 +204,11 @@ export default function DashboardPage() {
               </div>
               <div className="divide-y divide-gray-50">
                 {tasks.slice(0, 5).map((task) => (
-                  <div key={task.id} className="flex items-center gap-3 px-4 py-3">
+                  <Link
+                    key={task.id}
+                    href={`/tasks/${task.id}`}
+                    className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors"
+                  >
                     <div className={`w-2 h-2 rounded-full shrink-0 ${
                       task.status === "done" ? "bg-green-400" :
                       task.status === "doing" ? "bg-blue-400" : "bg-gray-300"
@@ -132,7 +224,7 @@ export default function DashboardPage() {
                         {task.dueDate.toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })}
                       </span>
                     )}
-                  </div>
+                  </Link>
                 ))}
               </div>
             </div>

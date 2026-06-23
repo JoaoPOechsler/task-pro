@@ -7,11 +7,12 @@ import {
   query,
   where,
   onSnapshot,
+  orderBy,
   Timestamp,
   serverTimestamp,
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import { Task } from "@/types/task";
+import { Task, Comment } from "@/types/task";
 
 type TaskInput = Omit<Task, "id" | "userId" | "createdAt" | "updatedAt">;
 
@@ -60,4 +61,38 @@ export async function updateTask(taskId: string, data: Partial<TaskInput>) {
 
 export async function deleteTask(taskId: string) {
   await deleteDoc(doc(db, "tasks", taskId));
+}
+
+export function subscribeComments(taskId: string, callback: (comments: Comment[]) => void) {
+  const q = query(
+    collection(db, "tasks", taskId, "comments"),
+    orderBy("createdAt", "asc")
+  );
+  return onSnapshot(q, (snap) => {
+    const comments = snap.docs.map((d) => {
+      const data = d.data();
+      return {
+        id: d.id,
+        text: data.text as string,
+        userId: data.userId as string,
+        userName: data.userName as string,
+        createdAt: data.createdAt ? (data.createdAt as Timestamp).toDate() : new Date(),
+      } satisfies Comment;
+    });
+    callback(comments);
+  });
+}
+
+export async function addComment(
+  taskId: string,
+  comment: Omit<Comment, "id" | "createdAt">
+) {
+  await addDoc(collection(db, "tasks", taskId, "comments"), {
+    ...comment,
+    createdAt: serverTimestamp(),
+  });
+}
+
+export async function deleteComment(taskId: string, commentId: string) {
+  await deleteDoc(doc(db, "tasks", taskId, "comments", commentId));
 }

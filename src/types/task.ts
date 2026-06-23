@@ -7,6 +7,14 @@ export interface Subtask {
   completed: boolean;
 }
 
+export interface Comment {
+  id: string;
+  text: string;
+  userId: string;
+  userName: string;
+  createdAt: Date;
+}
+
 export interface Task {
   id: string;
   userId: string;
